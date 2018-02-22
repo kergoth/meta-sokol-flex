@@ -288,32 +288,14 @@ setup_builddir () {
         rm -f $BUILDDIR/conf/local.conf $BUILDDIR/conf/bblayers.conf
     fi
 
-    mkdir -p $BUILDDIR/conf
+    test -e $BUILDDIR/conf/local.conf; no_localconf=$?
+    test -e $BUILDDIR/conf/bblayers.conf; no_bblayersconf=$?
 
-    if [ -z "$TEMPLATECONF" ]; then
-        if [ -f "$BUILDDIR/conf/templateconf.cfg" ]; then
-            TEMPLATECONF="$(cat "$BUILDDIR/conf/templateconf.cfg")"
-        elif [ -e "$layerdir/conf/local.conf.sample" ]; then
-            TEMPLATECONF="$layerdir/conf"
-        elif [ -e "$OEROOT/.templateconf" ]; then
-            . "$OEROOT/.templateconf"
-            # Convert to absolute path
-            TEMPLATECONF="$(cd "$(dirname "$TEMPLATECONF")" && pwd -P)/$(basename "$TEMPLATECONF")"
-        else
-            echo >&2 "Unable to determine TEMPLATECONF"
-            exit 1
-        fi
+    if [ $no_localconf -eq 1 ] || [ $no_bblayersconf -eq 1 ]; then
+        BUILDDIR="$BUILDDIR" TEMPLATECONF="$TEMPLATECONF" OEROOT="$OEROOT" ISARROOT="$OEROOT" $OEROOT/scripts/*-setup-builddir
     fi
 
-    if [ ! -f "$BUILDDIR/conf/templateconf.cfg" ]; then
-        echo "$TEMPLATECONF" >"$BUILDDIR/conf/templateconf.cfg"
-    fi
-
-    if [ ! -e $BUILDDIR/conf/local.conf ]; then
-        cp $TEMPLATECONF/local.conf.sample $BUILDDIR/conf/local.conf
-        echo "You had no local.conf file. This configuration file has therefore been"
-        echo "created for you with some default values."
-
+    if [ $no_localconf -eq 1 ]; then
         if [ -h "$MELDIR/codebench" ]; then
             codebench_path="$(cd "$MELDIR" && cd "$(readlink codebench)" && pwd -P)" || codebench_path="$MELDIR/../../codebench"
             sedexpr="\${MELDIR}/codebench"
@@ -335,16 +317,8 @@ setup_builddir () {
         fi
     fi
 
-    if [ ! -e $BUILDDIR/conf/bblayers.conf ]; then
-        echo "MELDIR = \"$MELDIR\"" >$BUILDDIR/conf/bblayers.conf
-        echo >>$BUILDDIR/conf/bblayers.conf
-        cat $TEMPLATECONF/bblayers.conf.sample >>$BUILDDIR/conf/bblayers.conf
-        echo "You had no bblayers.conf file. This configuration file has therefore been"
-        echo "created for you with some default values."
-    else
-        if [ -n "$MACHINE" ]; then
-            echo "Configuring existing bblayers.conf for $MACHINE"
-        fi
+    if [ $no_bblayersconf -eq 0 ] && [ -n "$MACHINE" ]; then
+        echo "Configuring existing bblayers.conf for $MACHINE"
     fi
 
     if [ -d "$MELDIR/bitbake" ]; then
@@ -368,7 +342,7 @@ elif [ -n "\$ZSH_NAME" ]; then
 else
     BUILDDIR="\$(pwd)"
 fi
-export TEMPLATECONF="$TEMPLATECONF"
+
 for i in $OEROOT/*-init-build-env; do
     if [ -e "\$i" ]; then
         . \$i "\$BUILDDIR" "$BITBAKEDIR"
@@ -376,7 +350,6 @@ for i in $OEROOT/*-init-build-env; do
     fi
 done
 export BB_ENV_EXTRAWHITE="\$BB_ENV_EXTRAWHITE GIT_SSL_CAINFO MGLS_LICENSE_FILE LM_LICENSE_FILE"
-unset TEMPLATECONF
 cd "\$BUILDDIR"
 END
 }

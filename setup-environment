@@ -119,7 +119,7 @@ else
             load_lconf_snippet "$layer" "conf/local.conf.append.$SETUP_ENV_MACHINE"
         done
 
-        . $BUILDDIR/setup-environment
+        . $BUILDDIR/setup-environment >/dev/null
 
         unset SETUP_ENV_MACHINE
         unset load_lconf_snippet
