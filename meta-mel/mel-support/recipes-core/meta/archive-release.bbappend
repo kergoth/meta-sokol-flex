@@ -13,6 +13,7 @@ inherit layerdirs
 ARCHIVE_RELEASE_VERSION ?= "${DISTRO_VERSION}"
 MANIFEST_NAME ?= "${DISTRO}-${ARCHIVE_RELEASE_VERSION}-${MACHINE}"
 EXTRA_MANIFEST_NAME ?= "${DISTRO}-${ARCHIVE_RELEASE_VERSION}"
+CUMULATIVE_MANIFESTS ?= "1"
 BSPFILES_INSTALL_PATH = "${MACHINE}/${ARCHIVE_RELEASE_VERSION}"
 GET_REMOTES_HOOK ?= ""
 
@@ -178,8 +179,14 @@ python do_archive_mel_layers () {
         c['DEFAULT'] = {'bspfiles_path': d.getVar('BSPFILES_INSTALL_PATH')}
         c.write(infofile)
 
+    cumulative = bb.utils.to_boolean(d.getVar('CUMULATIVE_MANIFESTS') or '')
+    if cumulative:
+        mode = 'a'
+    else:
+        mode = 'w'
+
     for fn, lines in manifestdata.items():
-        with open(fn, 'w') as manifest:
+        with open(fn, mode) as manifest:
             manifest.writelines(lines)
             files = [os.path.relpath(fn, outdir)]
             if fn == manifestfn:
@@ -381,8 +388,14 @@ python do_archive_mel_downloads () {
         manifestfn = layer_manifests.get(layername) or main_manifest
         manifests[manifestfn].append((layername, path, dest_path, checksum))
 
+    cumulative = bb.utils.to_boolean(d.getVar('CUMULATIVE_MANIFESTS') or '')
+    if cumulative:
+        mode = 'a'
+    else:
+        mode = 'w'
+
     for manifest, manifest_downloads in manifests.items():
-        with open(manifest, 'w') as f:
+        with open(manifest, mode) as f:
             for _, _, download_path, checksum in manifest_downloads:
                 f.write('%s\t%s\n' % (download_path, checksum))
 
