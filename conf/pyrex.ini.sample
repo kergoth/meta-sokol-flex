@@ -45,11 +45,12 @@ commands =
 # The name of the tag given to the Docker image. If you want to keep around
 # different Pyrex images simultaneously, each should have a unique tag
 #tag = garminpyrex/${config:dockerimage}:${config:pyrextag}
+tag = ${config:dockerimage}:mentor
 
 # If set to 1, the Docker image is built up locally every time the environment
 # is sourced. If set to 0, building the image will be skipped, which means that
 # docker may attempt to download a prebuilt image from a repository
-#buildlocal = 0
+buildlocal = 1
 
 # The Docker registry from which to fetch the image. Leave empty for the
 # default
