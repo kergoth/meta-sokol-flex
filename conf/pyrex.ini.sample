@@ -65,7 +65,7 @@ commands =
 # and populating it with the default values. Also note that Pyrex will attempt
 # to perform variable expansion on the environment variable values, so care
 # should be taken
-envimport = HOME PYREX_EXTRA_BINDS
+envimport = HOME PYREX_EXTRA_BINDS PYREX_DNS1 PYREX_DNS2
 
 [dockerbuild]
 # The Dockerfile used to build the Pyrex image (if building locally)
@@ -103,7 +103,9 @@ bind =
 # Extra arguments to pass to docker run. For example:
 #   --mount type=bind,src=${env:HOME}/.ssh,dst=${env:HOME}/.ssh,readonly
 #   --device /dev/kvm
-#args =
+args =
+    --dns=${env:PYREX_DNS1}
+    --dns=${env:PYREX_DNS2}
 
 # Prefix for all Pyrex commands. Useful for debugging. For example:
 #   strace -ff -ttt -o strace.log --
@@ -112,4 +114,5 @@ bind =
 # Assign default values for environment variables in this section
 [env]
     PYREX_EXTRA_BINDS =
-
+    PYREX_DNS1 = 8.8.8.8
+    PYREX_DNS2 = 8.8.4.4
