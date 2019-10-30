@@ -11,7 +11,11 @@ if [ -z "$OEINIT" ]; then
     echo >&2 "oe-init-build-env not found in @OEROOT@"
     false
 else
-    . "$OEINIT" "$BUILDDIR" "@BITBAKEDIR@"
+    if [ -e "@PYREXDIR@" ] && command -v docker >/dev/null 2>&1; then
+        PYREX_OEROOT="@OEROOT@" PYREX_OEINIT="$OEINIT" . "@PYREXDIR@/pyrex-init-build-env" "$BUILDDIR" "@BITBAKEDIR@"
+    else
+        . "$OEINIT" "$BUILDDIR" "@BITBAKEDIR@"
+    fi
     export BB_ENV_EXTRAWHITE="$BB_ENV_EXTRAWHITE GIT_SSL_CAINFO MGLS_LICENSE_FILE LM_LICENSE_FILE"
     unset TEMPLATECONF OEINIT
     cd "$BUILDDIR"
