@@ -12,6 +12,12 @@ if [ -z "$OEINIT" ]; then
     false
 else
     if [ -e "@PYREXDIR@" ] && command -v docker >/dev/null 2>&1; then
+        for i in ~/.ssh/config ~/.gitconfig ~/.config/git; do
+            if [ -e "$i" ]; then
+                PYREX_EXTRA_BINDS="$PYREX_EXTRA_BINDS $i"
+            fi
+        done
+        export PYREX_EXTRA_BINDS
         PYREX_OEROOT="@OEROOT@" PYREX_OEINIT="$OEINIT" . "@PYREXDIR@/pyrex-init-build-env" "$BUILDDIR" "@BITBAKEDIR@"
     else
         . "$OEINIT" "$BUILDDIR" "@BITBAKEDIR@"
