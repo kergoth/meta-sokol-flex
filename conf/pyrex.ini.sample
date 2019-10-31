@@ -19,9 +19,10 @@ confversion = 1
 tempdir = ${build:builddir}/pyrex
 
 # A list of globs for commands that should be wrapped by Pyrex
-#commands =
-#    ${build:oeroot}/bitbake/bin/*
-#    ${build:oeroot}/scripts/*
+commands =
+    ${build:oeroot}/bitbake/bin/*
+    ${build:oeroot}/../bitbake/bin/*
+    ${build:oeroot}/scripts/*
 
 # A list of globs that should never be run in pyrex (e.g. not even using the
 # shim commands to setup the pyrex environment). These are simply added to
