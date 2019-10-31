@@ -19,6 +19,11 @@ else
         done
         export PYREX_EXTRA_BINDS
         PYREX_OEROOT="@OEROOT@" PYREX_OEINIT="$OEINIT" . "@PYREXDIR@/pyrex-init-build-env" "$BUILDDIR" "@BITBAKEDIR@"
+        echo
+        echo "Note: Pyrex is being used to run bitbake in docker."
+        echo "If needed, you can set PYREX_DOCKER=0 to run everything on the host,"
+        echo "or run pyrex-shell to get an interactive shell inside the container."
+        echo "See conf/pyrex.ini and <meldir>/pyrex/README.md for details."
     else
         . "$OEINIT" "$BUILDDIR" "@BITBAKEDIR@"
     fi
