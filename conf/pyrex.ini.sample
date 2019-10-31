@@ -65,7 +65,7 @@ commands =
 # and populating it with the default values. Also note that Pyrex will attempt
 # to perform variable expansion on the environment variable values, so care
 # should be taken
-#envimport = HOME
+envimport = HOME PYREX_EXTRA_BINDS
 
 [dockerbuild]
 # The Dockerfile used to build the Pyrex image (if building locally)
@@ -92,6 +92,7 @@ commands =
 bind =
     ${build:oeroot}/..
     ${build:builddir}
+    ${env:PYREX_EXTRA_BINDS}
 
 # A list of environment variables that should be propagated to the Docker
 # container if set in the parent environment
@@ -110,4 +111,5 @@ bind =
 
 # Assign default values for environment variables in this section
 [env]
+    PYREX_EXTRA_BINDS =
 
