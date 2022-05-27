@@ -138,8 +138,7 @@ class MELUtilsPlugin(LayerPlugin):
 
         return items_by_layer
 
-    def _collect_fetch_recipes(self, targets, ctask, depgraph):
-        tdepends = depgraph['tdepends']
+    def _collect_fetch_recipes(self, targets, ctask, depgraph, include_depends=True):
         fetch_recipes = set()
         for target in targets:
             if ':' in target:
@@ -153,11 +152,13 @@ class MELUtilsPlugin(LayerPlugin):
             if task == 'do_fetch':
                 fetch_recipes.add(recipe)
 
+        tdepends = depgraph['tdepends']
         for task, taskdeps in tdepends.items():
             for dep in taskdeps:
                 deprecipe, deptask = dep.rsplit('.', 1)
-                if deptask == 'do_fetch':
-                    fetch_recipes.add(deprecipe)
+                if include_depends or deprecipe in targets:
+                    if deptask == 'do_fetch':
+                        fetch_recipes.add(deprecipe)
         return fetch_recipes
 
     def _gather_downloads(self, args):
@@ -182,7 +183,8 @@ class MELUtilsPlugin(LayerPlugin):
                 if re.match(filename):
                     return name
 
-        fetch_recipes = self._collect_fetch_recipes(args.targets, args.task, depgraph)
+        fetch_recipes = self._collect_fetch_recipes(args.targets, args.task, depgraph=depgraph,
+            include_depends=not args.targets_only)
 
         self.tinfoil.run_command('enableDataTracking')
 
@@ -205,9 +207,7 @@ class MELUtilsPlugin(LayerPlugin):
 
             real_fn, cls, mc = bb.cache.virtualfn2realfn(fn)
             recipe_layer = layer_for_file(real_fn)
-            appends = self.tinfoil.get_file_appends(fn)
-            data = self.tinfoil.parse_recipe_file(fn, appendlist=appends)
-
+            data = self.tinfoil.parse_recipe(recipe)
             for layer, items in self._localpaths_by_layer(data, real_fn, lambda f: layer_for_file(f) or recipe_layer, args.mirrortarballs).items():
                 items_by_layer[layer] |= items
 
@@ -302,10 +302,11 @@ class MELUtilsPlugin(LayerPlugin):
     def register_commands(self, sp):
         common = argparse.ArgumentParser(add_help=False)
         common.add_argument('--mirrortarballs', '-m', help='show existing mirror tarball paths rather than git clone paths', action='store_true')
-        common.add_argument('--task', '-c', help='specify the task to use when not expicitly specified for a target (default: BB_DEFAULT_TASK or "build")')
+        common.add_argument('--targets-only', '-t', help='only operate against the specified targets, not their dependencies', action='store_true')
+        common.add_argument('--task', '-c', help='specify the task to use when not explicitly specified for a target (default: BB_DEFAULT_TASK or "build")')
         common.add_argument('targets', nargs='+')
 
-        gather = self.add_command(sp, 'gather-downloads', self.do_gather_downloads, parents=[common], parserecipes=True)
+        self.add_command(sp, 'gather-downloads', self.do_gather_downloads, parents=[common], parserecipes=True)
         dump = self.add_command(sp, 'dump-downloads', self.do_dump_downloads, parents=[common], parserecipes=True)
         dump.add_argument('--append', '-a', help='append to output filename', action='store_true')
         dump.add_argument('--filename', '-f', help='filename to dump to', default='${TMPDIR}/downloads-by-layer.txt')
