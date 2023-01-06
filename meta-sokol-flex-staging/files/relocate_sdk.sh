@@ -65,7 +65,7 @@ if [ $relocate = 1 ] && [ -d $native_sysroot/lib ]; then
         echo "SDK could not be relocated.  No python found."
         exit 1
     fi
-    ${PYTHON} $target_sdk_dir/relocate_sdk.py $target_sdk_dir $dl_path $executable_files
+    ${PYTHON} $target_sdk_dir/relocate_sdk.py $default_sdk_dir $target_sdk_dir $dl_path $executable_files
 	if [ $? -ne 0 ]; then
 		echo "SDK could not be set up. Relocate script failed. Abort!"
 		exit 1
