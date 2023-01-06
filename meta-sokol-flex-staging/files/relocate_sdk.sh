@@ -26,7 +26,8 @@ if [ -n "$real_env_setup_script" ] ; then
 fi
 
 # fix dynamic loader paths in all ELF SDK binaries
-native_sysroot=$(cat $env_setup_script |grep 'OECORE_NATIVE_SYSROOT='|cut -d'=' -f2|tr -d '"')
+scriptdir="$target_sdk_dir" eval "$(grep 'OECORE_NATIVE_SYSROOT=' "$env_setup_script" | head -n 1)"
+native_sysroot="$OECORE_NATIVE_SYSROOT"
 dl_path=$(find $native_sysroot/lib -maxdepth 1 -name "ld-linux*")
 if [ "$dl_path" = "" ] ; then
 	echo "SDK could not be set up. Relocate script unable to find ld-linux.so. Abort!"
