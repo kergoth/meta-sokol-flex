@@ -106,7 +106,6 @@ post_relocate="$target_sdk_dir/post-relocate-setup.sh"
 if [ -e "$post_relocate" ]; then
 	sed -e "s:$default_sdk_dir:$target_sdk_dir:g" -i $post_relocate
 	/bin/sh $post_relocate "$target_sdk_dir" "$default_sdk_dir"
-	rm -f $post_relocate
 fi
 
 if [ $relocate = 1 ]; then
