@@ -28,19 +28,19 @@ fi
 # fix dynamic loader paths in all ELF SDK binaries
 scriptdir="$target_sdk_dir" eval "$(grep 'OECORE_NATIVE_SYSROOT=' "$env_setup_script" | head -n 1)"
 native_sysroot="$OECORE_NATIVE_SYSROOT"
-dl_path=$(find $native_sysroot/lib -maxdepth 1 -name "ld-linux*")
-if [ "$dl_path" = "" ] ; then
-	echo "SDK could not be set up. Relocate script unable to find ld-linux.so. Abort!"
-	exit 1
-fi
-executable_files=$(find $native_sysroot -type f \
-	\( -perm -0100 -o -perm -0010 -o -perm -0001 \) -printf "'%h/%f' ")
-if [ "x$executable_files" = "x" ]; then
-   echo "SDK relocate failed, could not get executalbe files"
-   exit 1
-fi
-
 if [ $relocate = 1 ] ; then
+    dl_path=$(find $native_sysroot/lib -maxdepth 1 -name "ld-linux*")
+    if [ "$dl_path" = "" ] ; then
+        echo "SDK could not be set up. Relocate script unable to find ld-linux.so. Abort!"
+        exit 1
+    fi
+    executable_files=$(find $native_sysroot -type f \
+        \( -perm -0100 -o -perm -0010 -o -perm -0001 \) -printf "'%h/%f' ")
+    if [ "x$executable_files" = "x" ]; then
+        echo "SDK relocate failed, could not get executalbe files"
+        exit 1
+    fi
+
     for py in python python2 python3
     do
         PYTHON=`which ${py} 2>/dev/null`
