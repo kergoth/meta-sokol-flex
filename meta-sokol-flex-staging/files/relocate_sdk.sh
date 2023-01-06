@@ -1,8 +1,15 @@
 #!/bin/bash
 
 relocate="${1:-1}"
-default_sdk_dir="@SDKPATH@"
 target_sdk_dir="$(cd "$(dirname "$0")" && pwd -P)"
+if [ -e "$target_sdk_dir/.relocated" ]; then
+    default_sdk_dir="$(cat "$target_sdk_dir/.relocated")"
+else
+    default_sdk_dir="@SDKPATH@"
+fi
+if [ "$default_sdk_dir" = "$target_sdk_dir" ]; then
+    exit 0
+fi
 
 if ! xargs --version > /dev/null 2>&1; then
 	echo "xargs is required by the relocation script, please install it first. Abort!"
@@ -93,5 +100,7 @@ for l in $(find $native_sysroot -type l); do
 		exit 1
     fi
 done
+
+echo "$target_sdk_dir" >"$target_sdk_dir/.relocated"
 
 echo done
