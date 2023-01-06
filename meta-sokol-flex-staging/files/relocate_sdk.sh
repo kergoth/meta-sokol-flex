@@ -9,6 +9,11 @@ if ! xargs --version > /dev/null 2>&1; then
 	exit 1
 fi
 
+if ! [ -w $target_sdk_dir ]; then
+    echo "Cannot write to $target_sdk_dir. If this SDK was installed by the root user, please run this script as root."
+    exit 1
+fi
+
 # fix environment paths
 real_env_setup_script=""
 for env_setup_script in `ls $target_sdk_dir/environment-setup-*`; do
