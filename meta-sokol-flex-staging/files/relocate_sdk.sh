@@ -101,6 +101,14 @@ for l in $(find $native_sysroot -type l); do
     fi
 done
 
+# Execute post-relocation script
+post_relocate="$target_sdk_dir/post-relocate-setup.sh"
+if [ -e "$post_relocate" ]; then
+	sed -e "s:$default_sdk_dir:$target_sdk_dir:g" -i $post_relocate
+	/bin/sh $post_relocate "$target_sdk_dir" "$default_sdk_dir"
+	rm -f $post_relocate
+fi
+
 if [ $relocate = 1 ]; then
     echo "$target_sdk_dir" >"$target_sdk_dir/.relocated"
 fi
