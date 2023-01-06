@@ -101,4 +101,6 @@ for l in $(find $native_sysroot -type l); do
     fi
 done
 
-echo "$target_sdk_dir" >"$target_sdk_dir/.relocated"
+if [ $relocate = 1 ]; then
+    echo "$target_sdk_dir" >"$target_sdk_dir/.relocated"
+fi
