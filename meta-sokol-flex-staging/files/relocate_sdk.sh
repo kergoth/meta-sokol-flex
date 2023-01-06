@@ -1,5 +1,9 @@
 #!/bin/bash
 
+relocate="${1:-1}"
+default_sdk_dir="@SDKPATH@"
+target_sdk_dir="$(cd "$(dirname "$0")" && pwd -P)"
+
 if ! xargs --version > /dev/null 2>&1; then
 	echo "xargs is required by the relocation script, please install it first. Abort!"
 	exit 1
