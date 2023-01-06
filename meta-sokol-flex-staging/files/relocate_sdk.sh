@@ -70,7 +70,7 @@ done | xargs -n100 file | grep ":.*\(ASCII\|script\|source\).*text" | \
              -e "$target_sdk_dir/post-relocate-setup" \
              -e "$target_sdk_dir/${0##*/}" | \
     xargs -n100 sed -i \
-        -e "s:$SDK_BUILD_PATH:$target_sdk_dir:g" \
+        -e "s:$default_sdk_dir:$target_sdk_dir:g" \
         -e "s:^#! */usr/bin/perl.*:#! /usr/bin/env perl:g" \
         -e "s: /usr/bin/perl: /usr/bin/env perl:g"
 
@@ -81,7 +81,7 @@ fi
 
 # change all symlinks pointing to @SDKPATH@
 for l in $(find $native_sysroot -type l); do
-	ln -sfn $(readlink $l|sed -e "s:$SDK_BUILD_PATH:$target_sdk_dir:") $l
+	ln -sfn $(readlink $l|sed -e "s:$default_sdk_dir:$target_sdk_dir:") $l
 	if [ $? -ne 0 ]; then
 		echo "Failed to setup symlinks. Relocate script failed. Abort!"
 		exit 1
