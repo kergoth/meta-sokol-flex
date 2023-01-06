@@ -39,33 +39,20 @@ if [ "x$executable_files" = "x" ]; then
    exit 1
 fi
 
-tdir=`mktemp -d`
-if [ x$tdir = x ] ; then
-   echo "SDK relocate failed, could not create a temporary directory"
-   exit 1
-fi
-cat <<EOF >> $tdir/relocate_sdk.sh
-#!/bin/sh
-for py in python python2 python3
-do
-	PYTHON=\`which \${py} 2>/dev/null\`
-	if [ \$? -eq 0 ]; then
-		break;
-	fi
-done
-
-if [ x\${PYTHON} = "x"  ]; then
-	echo "SDK could not be relocated.  No python found."
-	exit 1
-fi
-\${PYTHON} ${env_setup_script%/*}/relocate_sdk.py $target_sdk_dir $dl_path $executable_files
-EOF
-
-$SUDO_EXEC mv $tdir/relocate_sdk.sh ${env_setup_script%/*}/relocate_sdk.sh
-$SUDO_EXEC chmod 755 ${env_setup_script%/*}/relocate_sdk.sh
-rm -rf $tdir
 if [ $relocate = 1 ] ; then
-	$SUDO_EXEC ${env_setup_script%/*}/relocate_sdk.sh
+    for py in python python2 python3
+    do
+        PYTHON=`which ${py} 2>/dev/null`
+        if [ $? -eq 0 ]; then
+            break;
+        fi
+    done
+
+    if [ x${PYTHON} = "x"  ]; then
+        echo "SDK could not be relocated.  No python found."
+        exit 1
+    fi
+    ${PYTHON} $target_sdk_dir/relocate_sdk.py $target_sdk_dir $dl_path $executable_files
 	if [ $? -ne 0 ]; then
 		echo "SDK could not be set up. Relocate script failed. Abort!"
 		exit 1
