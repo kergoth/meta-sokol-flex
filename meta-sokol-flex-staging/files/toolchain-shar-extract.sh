@@ -268,6 +268,8 @@ printf "Setting it up..."
 
 @SDK_POST_INSTALL_COMMAND@
 
+echo "done"
+
 # delete the relocating script, so that user is forced to re-run the installer
 # if he/she wants another location for the sdk
 if [ $savescripts = 0 ] ; then
