@@ -41,6 +41,7 @@ fi
 scriptdir="$target_sdk_dir" eval "$(grep 'OECORE_NATIVE_SYSROOT=' "$env_setup_script" | head -n 1)"
 native_sysroot="$OECORE_NATIVE_SYSROOT"
 if [ $relocate = 1 ] && [ -d $native_sysroot/lib ]; then
+    echo >&2 "Relocating"
     dl_path=$(find $native_sysroot/lib -maxdepth 1 -name "ld-linux*")
     if [ "$dl_path" = "" ] ; then
         echo "SDK could not be set up. Relocate script unable to find ld-linux.so. Abort!"
