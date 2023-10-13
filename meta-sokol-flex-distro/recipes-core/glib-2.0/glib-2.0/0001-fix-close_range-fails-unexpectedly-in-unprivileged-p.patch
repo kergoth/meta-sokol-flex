@@ -1,0 +1,46 @@
+From 0fb283b3b1e3b4958b985804cbc40b7bff8b0e65 Mon Sep 17 00:00:00 2001
+From: Changqing Li <changqing.li@windriver.com>
+Date: Fri, 30 Sep 2022 08:29:41 +0000
+Subject: [PATCH] fix close_range fails unexpectedly in unprivileged process
+
+After change [1], start a unprivileged container (docker run without --privileged),
+close file may fail.
+
+This is actually an docker issue, see [2]. But this issue will
+block yocto build in docker with glibc2.35+. so add this local patch.
+
+[1] https://gitlab.gnome.org/GNOME/glib/-/commit/ce04a124040be091407e070280d86ca810bacb8c
+[2] https://github.com/moby/moby/issues/43595
+
+Upstream-Status: Inappropriate [Rejected by upstream]
+
+Signed-off-by: Changqing Li <changqing.li@windriver.com>
+---
+ glib/gspawn.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/glib/gspawn.c b/glib/gspawn.c
+index 0a2cbe5..83553a1 100644
+--- a/glib/gspawn.c
++++ b/glib/gspawn.c
+@@ -1544,7 +1544,7 @@ safe_fdwalk_set_cloexec (int lowfd)
+    * fall back to safe_fdwalk(). Handle EINVAL in case `CLOSE_RANGE_CLOEXEC`
+    * is not supported. */
+   int ret = close_range (lowfd, G_MAXUINT, CLOSE_RANGE_CLOEXEC);
+-  if (ret == 0 || !(errno == ENOSYS || errno == EINVAL))
++  if (ret == 0 || !(errno == ENOSYS || errno == EINVAL || errno == EPERM))
+     return ret;
+ #endif  /* HAVE_CLOSE_RANGE */
+   return safe_fdwalk (set_cloexec, GINT_TO_POINTER (lowfd));
+@@ -1597,7 +1597,7 @@ safe_closefrom (int lowfd)
+    * Handle ENOSYS in case it’s supported in libc but not the kernel; if so,
+    * fall back to safe_fdwalk(). */
+   int ret = close_range (lowfd, G_MAXUINT, 0);
+-  if (ret == 0 || errno != ENOSYS)
++  if (ret == 0 || !(errno == ENOSYS || errno == EPERM))
+     return ret;
+ #endif  /* HAVE_CLOSE_RANGE */
+   return safe_fdwalk (close_func, GINT_TO_POINTER (lowfd));
+-- 
+2.34.1
+
