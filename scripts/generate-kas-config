@@ -6,6 +6,30 @@ set -euo pipefail
 TAB=$'\t'
 scriptdir=$(cd "$(dirname "$0")" && pwd -P)
 
+usage() {
+    echo >&2 "${0##*/} [options] [MACHINE] [MACHINE..]"
+    echo >&2
+    echo >&2 "Options:"
+    echo >&2
+    echo >&2 "  -c    Include commit and URL in repos, not just path."
+    exit 2
+}
+
+process_arguments() {
+    include_commit=0
+    while getopts c:h opt; do
+        case "$opt" in
+        c)
+            include_commit=1
+            ;;
+        \? | h)
+            usage
+            ;;
+        esac
+    done
+    shift $((OPTIND - 1))
+}
+
 configured_layers() {
     tac "$1" |
         sed -n -e '/^"/,/^BBLAYERS ?= /{ /^BBLAYERS ?=/d; /^"/d; p;}' |
@@ -70,16 +94,19 @@ repos_config() {
         cut -"d$TAB" -f1-2 |
         uniq_seen |
         while IFS="$TAB" read -r name path; do
-            url=$(cd "$path" && git config remote.origin.url) || :
-            commit=$(cd "$path" && git rev-parse HEAD) || :
-
             echo "  $name:"
-            if [ -n "$url" ]; then
-                echo "    url: $url"
+
+            if [ $include_commit -eq 1 ]; then
+                url=$(cd "$path" && git config remote.origin.url) || :
+                commit=$(cd "$path" && git rev-parse HEAD) || :
+                if [ -n "$url" ]; then
+                    echo "    url: $url"
+                fi
+                if [ -n "$commit" ]; then
+                    echo "    commit: $commit"
+                fi
             fi
-            if [ -n "$commit" ]; then
-                echo "    commit: $commit"
-            fi
+
             echo "    path: $path"
             echo "    layers:"
 
@@ -92,6 +119,13 @@ repos_config() {
             echo
         done
 }
+
+process_arguments "$@"
+shift $((OPTIND - 1))
+
+if [ $# -eq 0 ]; then
+    usage
+fi
 
 tmpdir=$(mktemp -d -t "${0##*/}.XXXXXX")
 trap 'rm -rf "$tmpdir"' EXIT INT TERM
