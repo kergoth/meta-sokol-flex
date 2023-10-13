@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2002
+
+set -euo pipefail
+
+TAB=$'\t'
+scriptdir=$(cd "$(dirname "$0")" && pwd -P)
+
+configured_layers() {
+    tac "$1" |
+        sed -n -e '/^"/,/^BBLAYERS ?= /{ /^BBLAYERS ?=/d; /^"/d; p;}' |
+        awk '{print $1}'
+}
+
+uniq_seen() {
+    awk '!visited[$0]++'
+}
+
+local_conf() {
+    cat meta-sokol-flex/conf/local.conf.sample
+}
+
+# config_fragments() {
+#     sed -n -e '/^## Begin/{ :start; p; n; b start; };' "$tmpdir/build"/conf/local.conf |
+#         grep -Ev '^$|^#'
+# }
+
+load_lconf_snippet() {
+    local layerdir="$1"
+    local conffile="$2"
+    if [ -f "$layerdir/$conffile" ]; then
+        cat "$layerdir/$conffile"
+    fi
+}
+
+config_fragments() {
+    local machine="$1"
+
+    configured_layers "$tmpdir/build/conf/bblayers.conf" |
+        tac |
+        while read -r layer; do
+            relpath=$(cd "$layer" && git rev-parse --show-prefix)
+            relpath=${relpath%/}
+            repopath="$(cd "$layer" && git rev-parse --show-toplevel)"
+            name=$(basename "$repopath")
+
+            {
+                load_lconf_snippet "$layer" "conf/local.conf.append" | sed -e 's#^#  #'
+                load_lconf_snippet "$layer" "conf/local.conf.append.$machine" | sed -e 's#^#  #'
+            } >"$tmpdir/snippet"
+
+            if [ -s "$tmpdir/snippet" ]; then
+                # echo "$name${relpath:+-${relpath//\//-}}:"
+                echo "${relpath:-$name}: |"
+                cat "$tmpdir/snippet"
+                echo
+            fi
+        done
+}
+
+repos_config() {
+    configured_layers "$tmpdir/build/conf/bblayers.conf" |
+        while read -r layer; do
+            relpath=$(cd "$layer" && git rev-parse --show-prefix)
+            relpath=${relpath%/}
+            repopath="$(cd "$layer" && git rev-parse --show-toplevel)"
+            name=$(basename "$repopath")
+            path=${repopath#"$PWD"/}
+            printf '%s\t%s\t%s\n' "$name" "$path" "$relpath"
+        done >"$tmpdir/layers.txt"
+
+    echo
+    echo "repos:"
+    cat "$tmpdir/layers.txt" |
+        cut -"d$TAB" -f1-2 |
+        uniq_seen |
+        while IFS="$TAB" read -r name path; do
+            echo "  $name:"
+            echo "    path: $path"
+            echo "    layers:"
+
+            cat "$tmpdir/layers.txt" |
+                grep "^$name$TAB" |
+                cut -"d$TAB" -f3 |
+                while IFS="$TAB" read -r relpath; do
+                    echo "      ${relpath:-.}:"
+                done
+            echo
+        done
+}
+
+tmpdir=$(mktemp -d -t "${0##*/}.XXXXXX")
+trap 'rm -rf "$tmpdir"' EXIT INT TERM
+
+mkdir "$tmpdir/build"
+
+ret=0
+for machine; do
+    # shellcheck source=../setup-environment
+    if ! (set +euxP && . "$scriptdir/../setup-environment" -b "$tmpdir/build" "$machine") &>/dev/null; then
+        echo >&2 "Error setting up build directory for $machine, skipping"
+        ret=1
+    fi
+
+    cat >kas-"$machine".yaml.new <<END
+header:
+  version: 14
+
+distro: sokol-flex
+machine: $machine
+target: development-image
+
+env:
+  SALT_LICENSE_SERVER:
+  MGLS_LICENSE_FILE:
+
+local_conf_header:
+  meta-sokol-flex: |
+$(local_conf | grep -v '^$' | grep -v '^#' | grep -Ev '^(DISTRO|MACHINE)' | sed -e 's#^#    #')
+
+$(config_fragments "$machine" | sed -e 's#^#  #')
+END
+
+    repos_config >>kas-"$machine".yaml.new
+    mv kas-"$machine".yaml.new kas-"$machine".yaml
+done
+exit "$ret"
