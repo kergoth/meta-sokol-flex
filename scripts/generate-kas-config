@@ -20,11 +20,6 @@ local_conf() {
     cat meta-sokol-flex/conf/local.conf.sample
 }
 
-# config_fragments() {
-#     sed -n -e '/^## Begin/{ :start; p; n; b start; };' "$tmpdir/build"/conf/local.conf |
-#         grep -Ev '^$|^#'
-# }
-
 load_lconf_snippet() {
     local layerdir="$1"
     local conffile="$2"
@@ -75,7 +70,16 @@ repos_config() {
         cut -"d$TAB" -f1-2 |
         uniq_seen |
         while IFS="$TAB" read -r name path; do
+            url=$(cd "$path" && git config remote.origin.url) || :
+            commit=$(cd "$path" && git rev-parse HEAD) || :
+
             echo "  $name:"
+            if [ -n "$url" ]; then
+                echo "    url: $url"
+            fi
+            if [ -n "$commit" ]; then
+                echo "    commit: $commit"
+            fi
             echo "    path: $path"
             echo "    layers:"
 
