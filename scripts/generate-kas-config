@@ -12,15 +12,24 @@ usage() {
     echo >&2 "Options:"
     echo >&2
     echo >&2 "  -c    Include commit and URL in repos, not just path."
+    echo >&2 "  -k KCONFIG_FILE    Generate a Kconfig file for machine selection."
     exit 2
 }
 
 process_arguments() {
     include_commit=0
-    while getopts c:h opt; do
+    kconfig_file=
+    kasdir=./kas
+    while getopts ck:d:h opt; do
         case "$opt" in
         c)
             include_commit=1
+            ;;
+        k)
+            kconfig_file="$OPTARG"
+            ;;
+        d)
+            kasdir="$OPTARG"
             ;;
         \? | h)
             usage
@@ -70,7 +79,7 @@ config_fragments() {
 
             if [ -s "$tmpdir/snippet" ]; then
                 # echo "$name${relpath:+-${relpath//\//-}}:"
-                echo "${relpath:-$name}: |"
+                echo "${relpath:-$name}: |-"
                 cat "$tmpdir/snippet"
                 echo
             fi
@@ -78,15 +87,14 @@ config_fragments() {
 }
 
 repos_config() {
-    configured_layers "$tmpdir/build/conf/bblayers.conf" |
-        while read -r layer; do
-            relpath=$(cd "$layer" && git rev-parse --show-prefix)
-            relpath=${relpath%/}
-            repopath="$(cd "$layer" && git rev-parse --show-toplevel)"
-            name=$(basename "$repopath")
-            path=${repopath#"$PWD"/}
-            printf '%s\t%s\t%s\n' "$name" "$path" "$relpath"
-        done >"$tmpdir/layers.txt"
+    while read -r layer; do
+        relpath=$(cd "$layer" && git rev-parse --show-prefix)
+        relpath=${relpath%/}
+        repopath="$(cd "$layer" && git rev-parse --show-toplevel)"
+        name=$(basename "$repopath")
+        path=${repopath#"$PWD"/}
+        printf '%s\t%s\t%s\n' "$name" "$path" "$relpath"
+    done >"$tmpdir/layers.txt"
 
     echo
     echo "repos:"
@@ -130,17 +138,21 @@ fi
 tmpdir=$(mktemp -d -t "${0##*/}.XXXXXX")
 trap 'rm -rf "$tmpdir"' EXIT INT TERM
 
+mkdir -p "$kasdir"
+
 mkdir "$tmpdir/build"
 
 ret=0
 for machine; do
+    kasfile="$kasdir/$machine.yaml"
+
     # shellcheck source=../setup-environment
     if ! (set +euxP && . "$scriptdir/../setup-environment" -b "$tmpdir/build" "$machine") &>/dev/null; then
         echo >&2 "Error setting up build directory for $machine, skipping"
         ret=1
     fi
 
-    cat >kas-"$machine".yaml.new <<END
+    cat >"$kasfile".new <<END
 header:
   version: 14
 
@@ -153,13 +165,65 @@ env:
   MGLS_LICENSE_FILE:
 
 local_conf_header:
-  meta-sokol-flex: |
-$(local_conf | grep -v '^$' | grep -v '^#' | grep -Ev '^(DISTRO|MACHINE)' | sed -e 's#^#    #')
+  meta-sokol-flex: |-
+$(local_conf | grep -v '^$' | grep -v '^#' | grep -Ev '^(DISTRO|MACHINE|CONF_VERSION)' | sed -e 's#^#    #')
 
 $(config_fragments "$machine" | sed -e 's#^#  #')
 END
 
-    repos_config >>kas-"$machine".yaml.new
-    mv kas-"$machine".yaml.new kas-"$machine".yaml
+    configured_layers "$tmpdir/build/conf/bblayers.conf" |
+        tac |
+        tee "$tmpdir/layers.$machine.txt" |
+        tac |
+        repos_config >>"$kasfile".new
+    mv "$kasfile".new "$kasfile"
 done
+
+if [ -n "$kconfig_file" ]; then
+    {
+        # choice SELECT_MACHINE
+        # prompt "Select MACHINE to build"
+        # config QEMUARM64
+        #         bool "ARMv8 system on QEMU"
+        # config IMX93EVK
+        #         bool "NXP i.MX 93 Evaluation Kit"
+        #         select NXP
+        # config IMX8MMEVK
+        #         bool "NXP i.MX 8M Mini EVK"
+        #         select NXP
+        # endchoice
+        printf 'choice SELECT_MACHINE\n'
+        printf 'prompt "Select MACHINE to build"\n'
+        for machine; do
+            machine_name=
+            while read -r layer; do
+                if [ -e "$layer/conf/machine/$machine.conf" ]; then
+                    machine_name=$(sed -n -e 's/^#@NAME: //p' "$layer/conf/machine/$machine.conf")
+                    break
+                fi
+            done <"$tmpdir/layers.$machine.txt"
+
+            printf '    config %s\n' "$(echo "$machine" | tr '[:lower:]' '[:upper:]')"
+            printf '        bool "%s"\n' "${machine_name:-$machine}"
+        done
+        printf 'endchoice\n'
+
+        echo
+        # config KAS_INCLUDE_IMX93EVK
+        #     string
+        #     default "kas-imx93evk-flex.yaml"
+        #     depends on IMX93EVK
+        for machine; do
+            kasfile="$kasdir/$machine.yaml"
+
+            capsmachine="$(echo "$machine" | tr '[:lower:]' '[:upper:]')"
+            printf 'config KAS_INCLUDE_%s\n' "$capsmachine"
+            printf '    string\n'
+            printf '    default "%s"\n' "$kasfile"
+            printf '    depends on %s\n' "$capsmachine"
+            echo
+        done
+    } >"$kconfig_file"
+fi
+
 exit "$ret"
